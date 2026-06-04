@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up JDK 11
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v3
       with:
         java-version: '11'
         distribution: 'temurin'
@@ -22,8 +22,6 @@ jobs:
     
     - name: Build with Gradle
       run: ./gradlew build -x test --stacktrace
-      env:
-        GRADLE_OPTS: "-Xmx1024m"
     
     - name: Upload JAR
       uses: actions/upload-artifact@v4
