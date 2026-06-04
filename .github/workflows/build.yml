@@ -16,13 +16,14 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-        cache: 'gradle'
     
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
     - name: Build with Gradle
       run: ./gradlew build -x test --stacktrace
+      env:
+        GRADLE_OPTS: "-Xmx1024m"
     
     - name: Upload JAR
       uses: actions/upload-artifact@v4
