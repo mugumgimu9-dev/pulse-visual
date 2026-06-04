@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "pulse-visual",
+  "version": "${version}",
+  "name": "Pulse Visual",
+  "description": "Modern and customizable visual client for Minecraft",
+  "authors": [
+    "mugumgimu9-dev"
+  ],
+  "contact": {
+    "sources": "https://github.com/mugumgimu9-dev/pulse-visual"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.pulsevisual.PulseVisualMod"
+    ],
+    "client": [
+      "com.pulsevisual.client.PulseVisualClient"
+    ]
+  },
+  "mixins": [
+    "pulsevisual.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.14.0",
+    "fabric": "*",
+    "minecraft": "1.16.5"
+  }
+}
