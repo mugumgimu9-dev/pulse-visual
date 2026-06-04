@@ -1,0 +1,38 @@
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Gradle
+.gradle/
+build/
+*.gradle
+
+# Project
+run/
+out/
+bin/
+
+# Environment
+.env
+.env.local
+
+# Dependencies
+libs/
+
+# Configs
+pulse_visual/
