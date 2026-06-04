@@ -1,6 +1,6 @@
-name: Build JAR
+JAR: Build JJAR
 
-on:
+o:
   push:
     branches: [ main ]
 
