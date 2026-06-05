@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.option.KeyBinding; // ИСПРАВЛЕНО: правильный импорт для 1.16.5
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
@@ -20,24 +20,30 @@ import org.lwjgl.glfw.GLFW;
 public class PulseVisualMod implements ModInitializer {
     
     private static KeyBinding configKeyBinding;
+    private static KeyBinding swapKeyBinding; // Кнопка для принудительного свапа
     
-    // Переключатели модулей
     public static boolean targetHud = true;
     public static boolean shockwaves = true;
     public static boolean chromaRGB = true;
-    public static boolean inventoryPuller = false; 
+    public static boolean inventoryPuller = true; 
 
     public static int hotbarSlotIndex = 0; 
 
-    private static long lastPullTime = 0; 
-
     @Override
     public void onInitialize() {
-        // Регистрация кнопки открытия меню
+        // Кнопка меню (P)
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
                 GLFW.GLFW_KEY_P, 
+                "category.pulsevisual.general"
+        ));
+
+        // Кнопка для свапа из инвентаря (R)
+        swapKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.pulsevisual.swap", 
+                InputUtil.Type.KEYSYM, 
+                GLFW.GLFW_KEY_R, 
                 "category.pulsevisual.general"
         ));
 
@@ -48,15 +54,16 @@ public class PulseVisualMod implements ModInitializer {
                 }
             }
 
-            // Логика авто-подтягивания предметов из инвентаря
+            // ЛОГИКА СВАПА ИЗ ИНВЕНТАРЯ ПРИ НАЖАТИИ НА КНОПКУ "R"
             if (inventoryPuller && client.player != null && client.interactionManager != null && client.currentScreen == null) {
-                long currentTime = System.currentTimeMillis();
-                
-                if (client.player.inventory.getStack(hotbarSlotIndex).isEmpty() && (currentTime - lastPullTime > 300)) {
+                while (swapKeyBinding.wasPressed()) {
+                    
+                    // Ищем первую попавшуюся вещь в основном инвентаре (слоты 9-35)
                     for (int slot = 9; slot < 36; slot++) {
                         if (!client.player.inventory.getStack(slot).isEmpty()) {
                             int targetHotbarContainerId = 36 + hotbarSlotIndex; 
                             
+                            // 1. Клик по вещи в инвентаре (берём на курсор)
                             client.interactionManager.clickSlot(
                                 client.player.currentScreenHandler.syncId, 
                                 slot, 
@@ -65,6 +72,7 @@ public class PulseVisualMod implements ModInitializer {
                                 client.player
                             );
                             
+                            // 2. Клик по выбранному слоту хотбара (кладём туда вещь, а старую берём на курсор)
                             client.interactionManager.clickSlot(
                                 client.player.currentScreenHandler.syncId, 
                                 targetHotbarContainerId, 
@@ -72,16 +80,23 @@ public class PulseVisualMod implements ModInitializer {
                                 SlotActionType.PICKUP, 
                                 client.player
                             );
-                            
-                            lastPullTime = currentTime;
-                            break; 
+
+                            // 3. Возвращаем старую вещь обратно в инвентарь на освободившееся место
+                            client.interactionManager.clickSlot(
+                                client.player.currentScreenHandler.syncId, 
+                                slot, 
+                                0, 
+                                SlotActionType.PICKUP, 
+                                client.player
+                            );
+                            break; // Свап успешно завершен за одно нажатие
                         }
                     }
                 }
             }
         });
 
-        // HUD рендеринг (адаптированный под 1.16.5)
+        // HUD рендеринг
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null && client.textRenderer != null && !client.options.hudHidden) {
@@ -100,15 +115,13 @@ public class PulseVisualMod implements ModInitializer {
 
                 Matrix4f matrix = matrixStack.peek().getModel();
 
-                // 1. TargetHUD (Радиальный эквалайзер)
                 if (targetHud) {
                     int lines = 45;
                     double innerRadius = 28.0;
-                    
                     RenderSystem.lineWidth(2.0f);
                     Tessellator tessellator = Tessellator.getInstance();
                     BufferBuilder buffer = tessellator.getBuffer();
-                    buffer.begin(1, VertexFormats.POSITION_COLOR); // 1 = GL_LINES
+                    buffer.begin(1, VertexFormats.POSITION_COLOR);
 
                     for (int i = 0; i < lines; i++) {
                         double angle = (i * (360.0 / lines)) * Math.PI / 180.0;
@@ -126,7 +139,6 @@ public class PulseVisualMod implements ModInitializer {
                     tessellator.draw();
                 }
 
-                // 2. Shockwaves (Волны вокруг прицела)
                 if (shockwaves) {
                     RenderSystem.lineWidth(1.5f);
                     Tessellator tessellator = Tessellator.getInstance();
@@ -137,7 +149,7 @@ public class PulseVisualMod implements ModInitializer {
                         double radius = 12.0 + ((waveOffset % 1950) / 22.0);
                         float fadeAlpha = 1.0f - (float)((waveOffset % 1950) / 1950.0);
 
-                        buffer.begin(3, VertexFormats.POSITION_COLOR); // 3 = GL_LINE_STRIP
+                        buffer.begin(3, VertexFormats.POSITION_COLOR);
                         int points = 64;
                         for (int i = 0; i <= points; i++) {
                             double theta = i * (Math.PI * 2 / points);
@@ -152,7 +164,6 @@ public class PulseVisualMod implements ModInitializer {
                 RenderSystem.enableTexture();
                 RenderSystem.disableBlend();
 
-                // 3. Вотермарк
                 DrawableHelper.fill(matrixStack, 6, 6, 120, 24, 0xAA000000);
                 DrawableHelper.fill(matrixStack, 6, 6, 8, 24, rgb);
                 client.textRenderer.draw(matrixStack, "PULSE CLIENT", 14, 10, rgb);
@@ -160,7 +171,7 @@ public class PulseVisualMod implements ModInitializer {
         });
     }
 
-    // СТИЛЬНОЕ СLICK GUI ОКНО
+    // CLICK GUI ОКНО
     public static class PulseVisualScreen extends Screen {
         public PulseVisualScreen() {
             super(new LiteralText("Pulse ClickGUI"));
@@ -187,8 +198,8 @@ public class PulseVisualMod implements ModInitializer {
             renderModuleRow(matrices, "TargetHUD", targetHud ? "§a[ON]" : "§c[OFF]", x + 15, y + 30, mouseX, mouseY);
             renderModuleRow(matrices, "Shockwaves", shockwaves ? "§a[ON]" : "§c[OFF]", x + 15, y + 50, mouseX, mouseY);
             renderModuleRow(matrices, "Chroma RGB", chromaRGB ? "§a[ON]" : "§c[OFF]", x + 15, y + 70, mouseX, mouseY);
-            renderModuleRow(matrices, "Inv Puller", inventoryPuller ? "§a[ON]" : "§c[OFF]", x + 15, y + 95, mouseX, mouseY);
-            renderModuleRow(matrices, " Put to Slot", "§b[" + (hotbarSlotIndex + 1) + "]", x + 15, y + 115, mouseX, mouseY);
+            renderModuleRow(matrices, "Inv Swapper", inventoryPuller ? "§a[ON]" : "§c[OFF]", x + 15, y + 95, mouseX, mouseY);
+            renderModuleRow(matrices, " Target Slot", "§b[" + (hotbarSlotIndex + 1) + "]", x + 15, y + 115, mouseX, mouseY);
             
             super.render(matrices, mouseX, mouseY, delta);
         }
