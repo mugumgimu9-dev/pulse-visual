@@ -1,15 +1,9 @@
-{
-  "required": true,
-  "package": "com.pulsevisual.client.mixin",
-  "compatibilityLevel": "JAVA_17",
-  "mixins": [
-    "ClientPlayerEntityMixin",
-    "GameRendererMixin",
-    "InGameHudMixin"
-  ],
-  "client": [
-  ],
-  "injectors": {
-    "defaultRequire": 1
-  }
+package com.pulsevisual.client.mixin;
+
+import net.minecraft.client.gui.hud.InGameHud;
+import org.spongepowered.asm.mixin.Mixin;
+
+@Mixin(InGameHud.class)
+public class InGameHudMixin {
+    // Безопасная заглушка для совместимости конфигурации миксинов
 }
