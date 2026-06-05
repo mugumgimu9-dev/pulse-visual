@@ -1,27 +1,32 @@
-name: Build
+name: Fix and Build JAR
 on: [push, pull_request]
 
 jobs:
-  build:
+  fix-jar:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+      - name: Extract, Fix Mixin and Re-pack JAR
+        run: |
+          # 1. Создаем временную папку и распаковываем ваш готовый JAR
+          mkdir temp_jar
+          unzip pulse-visual-1.0.0.jar -d temp_jar
+          
+          # 2. Исправляем опечатку в пути пакета миксинов (добавляем .client)
+          sed -i 's/"package": "com.pulsevisual.mixin"/"package": "com.pulsevisual.client.mixin"/g' temp_jar/pulsevisual.mixins.json
+          
+          # 3. Принудительно выставляем совместимость с Java 8, чтобы TLauncher не ругался
+          sed -i 's/"compatibilityLevel": "JAVA_17"/"compatibilityLevel": "JAVA_8"/g' temp_jar/pulsevisual.mixins.json
+          
+          # 4. Собираем всё обратно в новый рабочий файл
+          cd temp_jar
+          zip -r ../pulse-visual-fixed.jar .
+          cd ..
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build with Gradle
-        run: gradle build
-
-      - name: Upload JAR Artifact
+      - name: Upload Working JAR Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pulse-visual-jar
-          path: build/libs/*.jar
+          name: fixed-minecraft-mod
+          path: pulse-visual-fixed.jar
