@@ -1,4 +1,4 @@
-name: Build Mod for Java 8
+name: Build Mod
 on: [push, pull_request]
 
 jobs:
@@ -14,29 +14,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Compile and Pack JAR
-        run: |
-          # Создаем структуру папок для сборки
-          mkdir -p build/classes build/final_jar
-          
-          # Находим все файлы Java и компилируем их с флагом совместимости под Java 8
-          find src/main/java -name "*.java" > sources.txt
-          if [ -s sources.txt ]; then
-            javac -source 8 -target 8 -cp "$(find ~/.gradle/caches -name "*.jar" 2>/dev/null | tr '\n' ':')" -d build/classes @sources.txt || true
-          fi
-          
-          # Копируем ресурсы (миксины, картинки, fabric.mod.json)
-          if [ -d src/main/resources ]; then
-            cp -r src/main/resources/* build/classes/
-          fi
-          
-          # Собираем всё в готовый JAR файл
-          cd build/classes
-          zip -r ../final_jar/pulse-visual-java8.jar .
-          cd ../..
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Upload Working JAR Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pulse-visual-jar
-          path: build/final_jar/pulse-visual-java8.jar
+      - name: Build with Gradle
+        run: gradle build
