@@ -1,14 +1,13 @@
 {
   "required": true,
-  "minVersion": "0.8",
-"package": "com.pulsevisual.client.mixin"
-  "compatibilityLevel": "JAVA_8",
+  "package": "com.pulsevisual.client.mixin",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "ClientPlayerEntityMixin",
+    "GameRendererMixin",
+    "InGameHudMixin"
   ],
   "client": [
-    "ClientPlayerEntityMixin",
-    "InGameHudMixin",
-    "GameRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
