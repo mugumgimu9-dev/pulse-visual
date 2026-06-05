@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.option.KeyBinding; // Исправленный пакет импорта
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
@@ -51,28 +51,23 @@ public class PulseVisualMod implements ModInitializer {
                 client.openScreen(new PulseVisualScreen());
             }
 
-            // ЛОГИКА СВАПА ВО ВТОРУЮ РУКУ ПО НАЖАТИЮ R
+            // Логика автоматического закидывания вещей в левую руку по кнопке R
             if (inventoryPuller && client.currentScreen == null) {
                 while (swapKeyBinding.wasPressed()) {
                     
                     client.player.sendMessage(new LiteralText("§b[Pulse] Кнопка R нажата!"), false);
                     boolean itemFound = false;
                     
-                    // Сканируем весь инвентарь (слоты 9-35 и хотбар 0-8, который в контейнере имеет ID 36-44)
-                    // Сначала проверим хотбар, потом основной инвентарь
                     for (int slot = 9; slot < 45; slot++) {
                         if (!client.player.inventory.getStack(slot < 36 ? slot : slot - 36).isEmpty()) {
                             
                             int syncId = client.player.currentScreenHandler.syncId;
-                            int offHandSlotId = 45; // ID слота левой руки в Майнкрафте
+                            int offHandSlotId = 45; // ID слота левой руки в Майнкрафт
                             
                             client.player.sendMessage(new LiteralText("§e[Pulse] Предмет отправлен во вторую руку!"), false);
 
-                            // 1. Берем найденный предмет из инвентаря на курсор
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
-                            // 2. Кладем его во вторую руку (и забираем то, что там было, на курсор)
                             client.interactionManager.clickSlot(syncId, offHandSlotId, 0, SlotActionType.PICKUP, client.player);
-                            // 3. Возвращаем старый предмет из левой руки на пустое место в инвентаре
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
                             
                             itemFound = true;
@@ -87,7 +82,7 @@ public class PulseVisualMod implements ModInitializer {
             }
         });
 
-        // Визуальный HUD
+        // Наш кастомный HUD
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null && client.textRenderer != null && !client.options.hudHidden) {
@@ -101,7 +96,7 @@ public class PulseVisualMod implements ModInitializer {
         });
     }
 
-    // CLICK GUI ОКНО
+    // Класс GUI Окна клиента
     public static class PulseVisualScreen extends Screen {
         public PulseVisualScreen() {
             super(new LiteralText("Pulse ClickGUI"));
