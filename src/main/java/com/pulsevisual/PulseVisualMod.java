@@ -8,7 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.options.KeyBinding; // В 1.16.5 базовый KeyBinding лежит тут
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.LiteralText;
@@ -23,7 +23,7 @@ public class PulseVisualMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        // Регистрируем кнопку меню на P
+        // Регистрируем кнопку меню на P (в категории "Pulse Visual")
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
@@ -31,6 +31,7 @@ public class PulseVisualMod implements ModInitializer {
                 "category.pulsevisual.general"
         ));
 
+        // Проверяем нажатие клавиши P каждый тик
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (configKeyBinding.wasPressed()) {
                 if (client.player != null) {
@@ -39,44 +40,37 @@ public class PulseVisualMod implements ModInitializer {
             }
         });
 
-        // Рендер элементов интерфейса в игре
+        // Отрисовка интерфейса мода в игре
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null && client.textRenderer != null && client.options != null && !client.options.hudHidden) {
                 
                 long time = System.currentTimeMillis();
 
-                // 1. РЕНДЕР ЭКВАЛАЙЗЕРА (если включен)
+                // 1. Прыгающий эквалайзер
                 if (enableEqualizer) {
-                    // Рисуем 5 прыгающих полосок внизу экрана
                     int startX = client.getWindow().getScaledWidth() / 2 - 40;
                     int startY = client.getWindow().getScaledHeight() - 60;
                     
                     for (int i = 0; i < 5; i++) {
-                        // Вычисляем динамическую высоту полоски по синусоиде времени
                         int height = 10 + (int)(Math.sin((time / 150.0) + i) * 8 + 8);
-                        // Рисуем неоново-голубую полоску эквалайзера
                         DrawableHelper.fill(matrixStack, startX + (i * 15), startY - height, startX + (i * 15) + 8, startY, 0xff00ffff);
                     }
                 }
 
-                // 2. РЕНДЕР КРУГОВЫХ ВОЛН (если включены)
+                // 2. Расширяющиеся круговые волны у прицела
                 if (enableWaves) {
-                    // Центр экрана
                     int centerX = client.getWindow().getScaledWidth() / 2;
                     int centerY = client.getWindow().getScaledHeight() / 2;
-                    
-                    // Вычисляем пульсирующий радиус круга (расширяется и сужается)
                     int waveRadius = 20 + (int)((time % 2000) / 50.0);
                     
-                    // Рисуем тонкие полупрозрачные рамки в виде "волн" вокруг прицела
                     DrawableHelper.fill(matrixStack, centerX - waveRadius, centerY - waveRadius, centerX + waveRadius, centerY - waveRadius + 1, 0x80ffffff);
                     DrawableHelper.fill(matrixStack, centerX - waveRadius, centerY + waveRadius - 1, centerX + waveRadius, centerY + waveRadius, 0x80ffffff);
                     DrawableHelper.fill(matrixStack, centerX - waveRadius, centerY - waveRadius, centerX - waveRadius + 1, centerY + waveRadius, 0x80ffffff);
                     DrawableHelper.fill(matrixStack, centerX + waveRadius - 1, centerY - waveRadius, centerX + waveRadius, centerY + waveRadius, 0x80ffffff);
                 }
 
-                // 3. Главная плашка мода в углу
+                // 3. Информационная панель в левом углу экрана
                 DrawableHelper.fill(matrixStack, 5, 5, 155, 45, 0x80000000);
                 client.textRenderer.draw(matrixStack, "§bPulse Visual §a[Active]", 10, 10, 0xffffff);
                 
@@ -89,7 +83,7 @@ public class PulseVisualMod implements ModInitializer {
         });
     }
 
-    // Экран настроек GUI
+    // Внутренний класс экрана настроек
     public static class PulseVisualScreen extends Screen {
         public PulseVisualScreen() {
             super(new LiteralText("Pulse Visual Settings"));
@@ -102,21 +96,21 @@ public class PulseVisualMod implements ModInitializer {
             int centerX = this.width / 2 - 100;
             int centerY = this.height / 2;
 
-            // Кнопка Эквалайзера
+            // Кнопка включения/выключения Эквалайзера
             this.addButton(new ButtonWidget(centerX, centerY - 40, buttonWidth, buttonHeight, 
                 new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")), button -> {
                     enableEqualizer = !enableEqualizer;
                     button.setMessage(new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")));
             }));
 
-            // Кнопка Волн
+            // Кнопка включения/выключения Волн
             this.addButton(new ButtonWidget(centerX, centerY - 15, buttonWidth, buttonHeight, 
                 new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")), button -> {
                     enableWaves = !enableWaves;
                     button.setMessage(new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")));
             }));
 
-            // Кнопка закрытия
+            // Кнопка возврата в игру
             this.addButton(new ButtonWidget(centerX, centerY + 20, buttonWidth, buttonHeight, 
                 new LiteralText("Close Menu"), button -> {
                     this.client.openScreen(null);
