@@ -17,7 +17,7 @@ public class PlayerUtils {
 
     public static float getPlayerYaw() {
         if (client.player == null) return 0;
-        return client.player.getYaw();
+        return client.player.getPitch(1.0F);
     }
 
     public static float getPlayerPitch() {
