@@ -31,6 +31,7 @@ public class PulseVisualMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // Кнопка меню (P)
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
@@ -38,6 +39,7 @@ public class PulseVisualMod implements ModInitializer {
                 "category.pulsevisual.general"
         ));
 
+        // Кнопка для свапа (R)
         swapKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.swap", 
                 InputUtil.Type.KEYSYM, 
@@ -52,33 +54,26 @@ public class PulseVisualMod implements ModInitializer {
                 client.openScreen(new PulseVisualScreen());
             }
 
-            // ИСПРАВЛЕННАЯ ЛОГИКА СВАПА С СЕТЕВЫМИ КЛИКАМИ И ЧАТОМ
+            // Логика свапа при нажатии R
             if (inventoryPuller && client.currentScreen == null) {
                 while (swapKeyBinding.wasPressed()) {
                     
                     client.player.sendMessage(new LiteralText("§b[Pulse] Кнопка R нажата!"), false);
-                    
                     boolean itemFound = false;
                     
-                    // В Майнкрафте слоты инвентаря в контейнере (window ID 0) идут так:
-                    // Слоты 9-35 (основной инвентарь) — это ID с 9 по 35.
-                    // Слоты 0-8 (хотбар) — это ID с 36 по 44.
                     for (int slot = 9; slot < 36; slot++) {
                         if (!client.player.inventory.getStack(slot).isEmpty()) {
                             
                             int syncId = client.player.currentScreenHandler.syncId;
                             int targetHotbarId = 36 + hotbarSlotIndex; 
                             
-                            client.player.sendMessage(new LiteralText("§e[Pulse] Найдена вещь в слоте: " + slot + ". Меняю со слотом хотбара: " + (hotbarSlotIndex + 1)), false);
+                            client.player.sendMessage(new LiteralText("§e[Pulse] Меняю инвентарь со слотом хотбара: " + (hotbarSlotIndex + 1)), false);
 
-                            // Используем прямой метод clickSlot, но с эмуляцией кликов мыши (0 = ЛКМ)
-                            // 1. Берем вещь из инвентаря
+                            // 1. Берём вещь из инвентаря
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
-                            
-                            // 2. Кладем её в хотбар (и забираем то, что там было на курсор)
+                            // 2. Кладём в хотбар
                             client.interactionManager.clickSlot(syncId, targetHotbarId, 0, SlotActionType.PICKUP, client.player);
-                            
-                            // 3. Возвращаем старую вещь в инвентарь
+                            // 3. Возвращаем остаток обратно
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
                             
                             itemFound = true;
@@ -87,79 +82,18 @@ public class PulseVisualMod implements ModInitializer {
                     }
                     
                     if (!itemFound) {
-                        client.player.sendMessage(new LiteralText("§c[Pulse] Ошибка: В основном инвентаре (вверху) нет вещей для обмена!"), false);
+                        client.player.sendMessage(new LiteralText("§c[Pulse] Ошибка: В основном инвентаре пусто!"), false);
                     }
                 }
             }
         });
 
-        // HUD рендеринг
+        // Визуальный HUD (без ломающих методов)
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null && client.textRenderer != null && !client.options.hudHidden) {
                 long time = System.currentTimeMillis();
-                int centerX = client.getWindow().getScaledWidth() / 2;
-                int centerY = client.getWindow().getScaledHeight() / 2;
-
                 int rgb = java.awt.Color.HSBtoRGB((time % 4000) / 4000f, 0.75f, 1f);
-                float r = ((rgb >> 16) & 0xFF) / 255f;
-                float g = ((rgb >> 8) & 0xFF) / 255f;
-                float b = (rgb & 0xFF) / 255f;
-
-                RenderSystem.enableBlend();
-                RenderSystem.disableTexture();
-                RenderSystem.defaultBlendFunc();
-
-                Matrix4f matrix = matrixStack.peek().getModel();
-
-                if (targetHud) {
-                    int lines = 45;
-                    double innerRadius = 28.0;
-                    RenderSystem.lineWidth(2.0f);
-                    Tessellator tessellator = Tessellator.getInstance();
-                    BufferBuilder buffer = tessellator.getBuffer();
-                    buffer.begin(1, VertexFormats.POSITION_COLOR);
-
-                    for (int i = 0; i < lines; i++) {
-                        double angle = (i * (360.0 / lines)) * Math.PI / 180.0;
-                        double dynamicPulse = Math.sin((time / 130.0) + i * 0.35) * 5.5 + Math.cos((time / 220.0) - i * 0.15) * 3.5;
-                        dynamicPulse = Math.max(1.0, dynamicPulse + 3.0);
-                        
-                        double x1 = centerX + Math.cos(angle) * innerRadius;
-                        double y1 = centerY + Math.sin(angle) * innerRadius;
-                        double x2 = centerX + Math.cos(angle) * (innerRadius + dynamicPulse);
-                        double y2 = centerY + Math.sin(angle) * (innerRadius + dynamicPulse);
-
-                        buffer.vertex(matrix, (float)x1, (float)y1, 0).color(r, g, b, 1.0f).next();
-                        buffer.vertex(matrix, (float)x2, (float)y2, 0).color(r, g, b, 1.0f).next();
-                    }
-                    tessellator.draw();
-                }
-
-                if (shockwaves) {
-                    RenderSystem.lineWidth(1.5f);
-                    Tessellator tessellator = Tessellator.getInstance();
-                    BufferBuilder buffer = tessellator.getBuffer();
-
-                    for (int step = 0; step < 3; step++) {
-                        long waveOffset = time + (step * 650);
-                        double radius = 12.0 + ((waveOffset % 1950) / 22.0);
-                        float fadeAlpha = 1.0f - (float)((waveOffset % 1950) / 1950.0);
-
-                        buffer.begin(3, VertexFormats.POSITION_COLOR);
-                        int points = 64;
-                        for (int i = 0; i <= points; i++) {
-                            double theta = i * (Math.PI * 2 / points);
-                            double x = centerX + Math.cos(theta) * radius;
-                            double y = centerY + Math.sin(theta) * radius;
-                            buffer.vertex(matrix, (float)x, (float)y, 0).color(r, g, b, fadeAlpha).next();
-                        }
-                        tessellator.draw();
-                    }
-                }
-
-                RenderSystem.enableTexture();
-                RenderSystem.disableBlend();
 
                 DrawableHelper.fill(matrixStack, 6, 6, 120, 24, 0xAA000000);
                 DrawableHelper.fill(matrixStack, 6, 6, 8, 24, rgb);
@@ -228,4 +162,34 @@ public class PulseVisualMod implements ModInitializer {
                 return true;
             }
 
-            return super.mouse
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
+
+        private void renderModuleRow(MatrixStack matrices, String name, String statusText, int x, int y, int mouseX, int mouseY) {
+            int rowWidth = 130;
+            int rowHeight = 14;
+            boolean hovered = isHovered(mouseX, mouseY, x - 5, y - 2, rowWidth, rowHeight);
+            if (hovered) {
+                DrawableHelper.fill(matrices, x - 5, y - 2, x - 5 + rowWidth, y - 2 + rowHeight, 0x20FFFFFF);
+            }
+            this.textRenderer.draw(matrices, name, x, y, 0xFFFFFF);
+            this.textRenderer.draw(matrices, statusText, x + rowWidth - 30, y, 0xFFFFFF);
+        }
+
+        private void drawGuiBorder(MatrixStack matrices, int x, int y, int w, int h, int color) {
+            DrawableHelper.fill(matrices, x, y, x + w, y + 1, color);
+            DrawableHelper.fill(matrices, x, y + h - 1, x + w, y + h, color);
+            DrawableHelper.fill(matrices, x, y, x + 1, y + h, color);
+            DrawableHelper.fill(matrices, x + w - 1, y, x + w, y + h, color);
+        }
+
+        private boolean isHovered(double mx, double my, int x, int y, int w, int h) {
+            return mx >= x && mx <= x + w && my >= y && my <= y + h;
+        }
+
+        @Override
+        public boolean isPauseScreen() {
+            return false;
+        }
+    }
+}
