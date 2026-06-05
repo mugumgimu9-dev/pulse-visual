@@ -32,10 +32,12 @@ public class EntityUtils {
     }
 
     public static float getEntityYaw(Entity entity) {
-        return entity.getYaw();
+        if (entity == null) return 0.0F;
+        return entity.getYaw(1.0F);
     }
 
     public static float getEntityPitch(Entity entity) {
-        return entity.getPitch();
+        if (entity == null) return 0.0F;
+        return entity.getPitch(1.0F);
     }
 }
