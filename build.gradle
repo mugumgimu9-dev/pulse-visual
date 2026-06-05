@@ -8,6 +8,8 @@ group = project.maven_group
 
 repositories {
     maven { url = "https://maven.terraformersmc.com/" }
+    maven { url = "https://maven.fabricmc.net/" }
+    maven Central()
 }
 
 dependencies {
