@@ -21,3 +21,9 @@ jobs:
 
       - name: Build with Gradle
         run: gradle build --no-daemon
+
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-visual-jar
+          path: "**/build/libs/*.jar"
