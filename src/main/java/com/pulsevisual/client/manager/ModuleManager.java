@@ -4,7 +4,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.api.EnvType;
 import java.util.ArrayList;
 import java.util.List;
-import com.pulsevisual.client.module.*;
+import com.pulsevisual.client.module.Module;
 
 @Environment(EnvType.CLIENT)
 public class ModuleManager {
@@ -12,24 +12,24 @@ public class ModuleManager {
 
     public void initializeModules() {
         // Render modules
-        registerModule(new FullbrightModule());
-        registerModule(new ESPModule());
-        registerModule(new TracersModule());
-        registerModule(new NameTagsModule());
-        registerModule(new CustomCrosshairModule());
-        registerModule(new HUDModule());
+        registerModule(new com.pulsevisual.client.module.FullbrightModule());
+        registerModule(new com.pulsevisual.client.module.ESPModule());
+        registerModule(new com.pulsevisual.client.module.TracersModule());
+        registerModule(new com.pulsevisual.client.module.NameTagsModule());
+        registerModule(new com.pulsevisual.client.module.CustomCrosshairModule());
+        registerModule(new com.pulsevisual.client.module.HUDModule());
         
         // Combat modules
-        registerModule(new DamageParticlesModule());
-        registerModule(new KillEffectsModule());
-        registerModule(new CriticalHitModule());
-        registerModule(new TotemsModule());
+        registerModule(new com.pulsevisual.client.module.DamageParticlesModule());
+        registerModule(new com.pulsevisual.client.module.KillEffectsModule());
+        registerModule(new com.pulsevisual.client.module.CriticalHitModule());
+        registerModule(new com.pulsevisual.client.module.TotemsModule());
         
         // Utility modules
-        registerModule(new KeystrokesModule());
-        registerModule(new CPSModule());
-        registerModule(new ArmorStatusModule());
-        registerModule(new PotionStatusModule());
+        registerModule(new com.pulsevisual.client.module.KeystrokesModule());
+        registerModule(new com.pulsevisual.client.module.CPSModule());
+        registerModule(new com.pulsevisual.client.module.ArmorStatusModule());
+        registerModule(new com.pulsevisual.client.module.PotionStatusModule());
     }
 
     public void registerModule(Module module) {
