@@ -14,7 +14,6 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.LiteralText;
-import net.minecraft.util.math.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 
 public class PulseVisualMod implements ModInitializer {
@@ -27,8 +26,6 @@ public class PulseVisualMod implements ModInitializer {
     public static boolean chromaRGB = true;
     public static boolean inventoryPuller = true; 
 
-    public static int hotbarSlotIndex = 0; 
-
     @Override
     public void onInitialize() {
         // Кнопка меню (P)
@@ -39,7 +36,7 @@ public class PulseVisualMod implements ModInitializer {
                 "category.pulsevisual.general"
         ));
 
-        // Кнопка для свапа (R)
+        // Кнопка для свапа во вторую руку (R)
         swapKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.swap", 
                 InputUtil.Type.KEYSYM, 
@@ -54,26 +51,28 @@ public class PulseVisualMod implements ModInitializer {
                 client.openScreen(new PulseVisualScreen());
             }
 
-            // Логика свапа при нажатии R
+            // ЛОГИКА СВАПА ВО ВТОРУЮ РУКУ ПО НАЖАТИЮ R
             if (inventoryPuller && client.currentScreen == null) {
                 while (swapKeyBinding.wasPressed()) {
                     
                     client.player.sendMessage(new LiteralText("§b[Pulse] Кнопка R нажата!"), false);
                     boolean itemFound = false;
                     
-                    for (int slot = 9; slot < 36; slot++) {
-                        if (!client.player.inventory.getStack(slot).isEmpty()) {
+                    // Сканируем весь инвентарь (слоты 9-35 и хотбар 0-8, который в контейнере имеет ID 36-44)
+                    // Сначала проверим хотбар, потом основной инвентарь
+                    for (int slot = 9; slot < 45; slot++) {
+                        if (!client.player.inventory.getStack(slot < 36 ? slot : slot - 36).isEmpty()) {
                             
                             int syncId = client.player.currentScreenHandler.syncId;
-                            int targetHotbarId = 36 + hotbarSlotIndex; 
+                            int offHandSlotId = 45; // ID слота левой руки в Майнкрафте
                             
-                            client.player.sendMessage(new LiteralText("§e[Pulse] Меняю инвентарь со слотом хотбара: " + (hotbarSlotIndex + 1)), false);
+                            client.player.sendMessage(new LiteralText("§e[Pulse] Предмет отправлен во вторую руку!"), false);
 
-                            // 1. Берём вещь из инвентаря
+                            // 1. Берем найденный предмет из инвентаря на курсор
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
-                            // 2. Кладём в хотбар
-                            client.interactionManager.clickSlot(syncId, targetHotbarId, 0, SlotActionType.PICKUP, client.player);
-                            // 3. Возвращаем остаток обратно
+                            // 2. Кладем его во вторую руку (и забираем то, что там было, на курсор)
+                            client.interactionManager.clickSlot(syncId, offHandSlotId, 0, SlotActionType.PICKUP, client.player);
+                            // 3. Возвращаем старый предмет из левой руки на пустое место в инвентаре
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
                             
                             itemFound = true;
@@ -82,13 +81,13 @@ public class PulseVisualMod implements ModInitializer {
                     }
                     
                     if (!itemFound) {
-                        client.player.sendMessage(new LiteralText("§c[Pulse] Ошибка: В основном инвентаре пусто!"), false);
+                        client.player.sendMessage(new LiteralText("§c[Pulse] Ошибка: Инвентарь полностью пуст!"), false);
                     }
                 }
             }
         });
 
-        // Визуальный HUD (без ломающих методов)
+        // Визуальный HUD
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null && client.textRenderer != null && !client.options.hudHidden) {
@@ -116,7 +115,7 @@ public class PulseVisualMod implements ModInitializer {
             int rgb = java.awt.Color.HSBtoRGB((time % 4000) / 4000f, 0.75f, 1f);
 
             int guiWidth = 160;
-            int guiHeight = 145; 
+            int guiHeight = 125; 
             int x = this.width / 2 - guiWidth / 2;
             int y = this.height / 2 - guiHeight / 2;
 
@@ -129,8 +128,7 @@ public class PulseVisualMod implements ModInitializer {
             renderModuleRow(matrices, "TargetHUD", targetHud ? "§a[ON]" : "§c[OFF]", x + 15, y + 30, mouseX, mouseY);
             renderModuleRow(matrices, "Shockwaves", shockwaves ? "§a[ON]" : "§c[OFF]", x + 15, y + 50, mouseX, mouseY);
             renderModuleRow(matrices, "Chroma RGB", chromaRGB ? "§a[ON]" : "§c[OFF]", x + 15, y + 70, mouseX, mouseY);
-            renderModuleRow(matrices, "Inv Swapper", inventoryPuller ? "§a[ON]" : "§c[OFF]", x + 15, y + 95, mouseX, mouseY);
-            renderModuleRow(matrices, " Target Slot", "§b[" + (hotbarSlotIndex + 1) + "]", x + 15, y + 115, mouseX, mouseY);
+            renderModuleRow(matrices, "Offhand Swap", inventoryPuller ? "§a[ON]" : "§c[OFF]", x + 15, y + 95, mouseX, mouseY);
             
             super.render(matrices, mouseX, mouseY, delta);
         }
@@ -139,7 +137,7 @@ public class PulseVisualMod implements ModInitializer {
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             int guiWidth = 160;
             int x = this.width / 2 - guiWidth / 2;
-            int y = this.height / 2 - 145 / 2;
+            int y = this.height / 2 - 125 / 2;
 
             if (isHovered(mouseX, mouseY, x + 10, y + 28, guiWidth - 20, 14)) {
                 targetHud = !targetHud;
@@ -155,10 +153,6 @@ public class PulseVisualMod implements ModInitializer {
             }
             if (isHovered(mouseX, mouseY, x + 10, y + 93, guiWidth - 20, 14)) {
                 inventoryPuller = !inventoryPuller;
-                return true;
-            }
-            if (isHovered(mouseX, mouseY, x + 10, y + 113, guiWidth - 20, 14)) {
-                hotbarSlotIndex = (hotbarSlotIndex + 1) % 9;
                 return true;
             }
 
