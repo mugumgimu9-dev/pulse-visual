@@ -1,5 +1,6 @@
 package com.pulsevisual.client;
 
+import com.pulsevisual.client.manager.ModuleManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.Environment;
 import net.fabricmc.api.EnvType;
