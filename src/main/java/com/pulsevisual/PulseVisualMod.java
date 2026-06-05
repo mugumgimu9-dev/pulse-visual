@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.options.KeyBinding;
+import net.minecraft.client.option.KeyBinding; // ИСПРАВЛЕНО: правильный импорт для 1.16.5
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
@@ -33,6 +33,7 @@ public class PulseVisualMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // Регистрация кнопки открытия меню
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
@@ -107,8 +108,7 @@ public class PulseVisualMod implements ModInitializer {
                     RenderSystem.lineWidth(2.0f);
                     Tessellator tessellator = Tessellator.getInstance();
                     BufferBuilder buffer = tessellator.getBuffer();
-                    // В 1.16.5 вместо DrawMode используются сырые ID из OpenGL (1 = GL_LINES)
-                    buffer.begin(1, VertexFormats.POSITION_COLOR);
+                    buffer.begin(1, VertexFormats.POSITION_COLOR); // 1 = GL_LINES
 
                     for (int i = 0; i < lines; i++) {
                         double angle = (i * (360.0 / lines)) * Math.PI / 180.0;
@@ -137,13 +137,12 @@ public class PulseVisualMod implements ModInitializer {
                         double radius = 12.0 + ((waveOffset % 1950) / 22.0);
                         float fadeAlpha = 1.0f - (float)((waveOffset % 1950) / 1950.0);
 
-                        // 3 = GL_LINE_STRIP для отрисовки связанных линий круга
-                        buffer.begin(3, VertexFormats.POSITION_COLOR);
+                        buffer.begin(3, VertexFormats.POSITION_COLOR); // 3 = GL_LINE_STRIP
                         int points = 64;
                         for (int i = 0; i <= points; i++) {
                             double theta = i * (Math.PI * 2 / points);
-                            double x = cx(centerX, theta, radius);
-                            double y = cy(centerY, theta, radius);
+                            double x = centerX + Math.cos(theta) * radius;
+                            double y = centerY + Math.sin(theta) * radius;
                             buffer.vertex(matrix, (float)x, (float)y, 0).color(r, g, b, fadeAlpha).next();
                         }
                         tessellator.draw();
@@ -159,14 +158,6 @@ public class PulseVisualMod implements ModInitializer {
                 client.textRenderer.draw(matrixStack, "PULSE CLIENT", 14, 10, rgb);
             }
         });
-    }
-
-    private static double cx(int centerX, double theta, double radius) {
-        return centerX + Math.cos(theta) * radius;
-    }
-
-    private static double cy(int centerY, double theta, double radius) {
-        return centerY + Math.sin(theta) * radius;
     }
 
     // СТИЛЬНОЕ СLICK GUI ОКНО
