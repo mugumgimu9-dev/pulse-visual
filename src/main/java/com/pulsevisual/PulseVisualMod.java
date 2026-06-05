@@ -20,7 +20,7 @@ import org.lwjgl.glfw.GLFW;
 public class PulseVisualMod implements ModInitializer {
     
     private static KeyBinding configKeyBinding;
-    private static KeyBinding swapKeyBinding; // Кнопка для принудительного свапа
+    private static KeyBinding swapKeyBinding; 
     
     public static boolean targetHud = true;
     public static boolean shockwaves = true;
@@ -31,7 +31,6 @@ public class PulseVisualMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        // Кнопка меню (P)
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
@@ -39,7 +38,6 @@ public class PulseVisualMod implements ModInitializer {
                 "category.pulsevisual.general"
         ));
 
-        // Кнопка для свапа из инвентаря (R)
         swapKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.swap", 
                 InputUtil.Type.KEYSYM, 
@@ -48,49 +46,48 @@ public class PulseVisualMod implements ModInitializer {
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (client.player == null || client.interactionManager == null) return;
+
             while (configKeyBinding.wasPressed()) {
-                if (client.player != null) {
-                    client.openScreen(new PulseVisualScreen());
-                }
+                client.openScreen(new PulseVisualScreen());
             }
 
-            // ЛОГИКА СВАПА ИЗ ИНВЕНТАРЯ ПРИ НАЖАТИИ НА КНОПКУ "R"
-            if (inventoryPuller && client.player != null && client.interactionManager != null && client.currentScreen == null) {
+            // ИСПРАВЛЕННАЯ ЛОГИКА СВАПА С СЕТЕВЫМИ КЛИКАМИ И ЧАТОМ
+            if (inventoryPuller && client.currentScreen == null) {
                 while (swapKeyBinding.wasPressed()) {
                     
-                    // Ищем первую попавшуюся вещь в основном инвентаре (слоты 9-35)
+                    client.player.sendMessage(new LiteralText("§b[Pulse] Кнопка R нажата!"), false);
+                    
+                    boolean itemFound = false;
+                    
+                    // В Майнкрафте слоты инвентаря в контейнере (window ID 0) идут так:
+                    // Слоты 9-35 (основной инвентарь) — это ID с 9 по 35.
+                    // Слоты 0-8 (хотбар) — это ID с 36 по 44.
                     for (int slot = 9; slot < 36; slot++) {
                         if (!client.player.inventory.getStack(slot).isEmpty()) {
-                            int targetHotbarContainerId = 36 + hotbarSlotIndex; 
                             
-                            // 1. Клик по вещи в инвентаре (берём на курсор)
-                            client.interactionManager.clickSlot(
-                                client.player.currentScreenHandler.syncId, 
-                                slot, 
-                                0, 
-                                SlotActionType.PICKUP, 
-                                client.player
-                            );
+                            int syncId = client.player.currentScreenHandler.syncId;
+                            int targetHotbarId = 36 + hotbarSlotIndex; 
                             
-                            // 2. Клик по выбранному слоту хотбара (кладём туда вещь, а старую берём на курсор)
-                            client.interactionManager.clickSlot(
-                                client.player.currentScreenHandler.syncId, 
-                                targetHotbarContainerId, 
-                                0, 
-                                SlotActionType.PICKUP, 
-                                client.player
-                            );
+                            client.player.sendMessage(new LiteralText("§e[Pulse] Найдена вещь в слоте: " + slot + ". Меняю со слотом хотбара: " + (hotbarSlotIndex + 1)), false);
 
-                            // 3. Возвращаем старую вещь обратно в инвентарь на освободившееся место
-                            client.interactionManager.clickSlot(
-                                client.player.currentScreenHandler.syncId, 
-                                slot, 
-                                0, 
-                                SlotActionType.PICKUP, 
-                                client.player
-                            );
-                            break; // Свап успешно завершен за одно нажатие
+                            // Используем прямой метод clickSlot, но с эмуляцией кликов мыши (0 = ЛКМ)
+                            // 1. Берем вещь из инвентаря
+                            client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
+                            
+                            // 2. Кладем её в хотбар (и забираем то, что там было на курсор)
+                            client.interactionManager.clickSlot(syncId, targetHotbarId, 0, SlotActionType.PICKUP, client.player);
+                            
+                            // 3. Возвращаем старую вещь в инвентарь
+                            client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
+                            
+                            itemFound = true;
+                            break; 
                         }
+                    }
+                    
+                    if (!itemFound) {
+                        client.player.sendMessage(new LiteralText("§c[Pulse] Ошибка: В основном инвентаре (вверху) нет вещей для обмена!"), false);
                     }
                 }
             }
@@ -231,34 +228,4 @@ public class PulseVisualMod implements ModInitializer {
                 return true;
             }
 
-            return super.mouseClicked(mouseX, mouseY, button);
-        }
-
-        private void renderModuleRow(MatrixStack matrices, String name, String statusText, int x, int y, int mouseX, int mouseY) {
-            int rowWidth = 130;
-            int rowHeight = 14;
-            boolean hovered = isHovered(mouseX, mouseY, x - 5, y - 2, rowWidth, rowHeight);
-            if (hovered) {
-                DrawableHelper.fill(matrices, x - 5, y - 2, x - 5 + rowWidth, y - 2 + rowHeight, 0x20FFFFFF);
-            }
-            this.textRenderer.draw(matrices, name, x, y, 0xFFFFFF);
-            this.textRenderer.draw(matrices, statusText, x + rowWidth - 30, y, 0xFFFFFF);
-        }
-
-        private void drawGuiBorder(MatrixStack matrices, int x, int y, int w, int h, int color) {
-            DrawableHelper.fill(matrices, x, y, x + w, y + 1, color);
-            DrawableHelper.fill(matrices, x, y + h - 1, x + w, y + h, color);
-            DrawableHelper.fill(matrices, x, y, x + 1, y + h, color);
-            DrawableHelper.fill(matrices, x + w - 1, y, x + w, y + h, color);
-        }
-
-        private boolean isHovered(double mx, double my, int x, int y, int w, int h) {
-            return mx >= x && mx <= x + w && my >= y && my <= y + h;
-        }
-
-        @Override
-        public boolean isPauseScreen() {
-            return false;
-        }
-    }
-}
+            return super.mouse
