@@ -17,11 +17,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle and Build
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.1.1
-          arguments: build -x test
+
+      - name: Build with Gradle
+        run: gradle build -x test
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
