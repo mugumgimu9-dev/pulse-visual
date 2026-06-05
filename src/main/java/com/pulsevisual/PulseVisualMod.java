@@ -18,12 +18,14 @@ public class PulseVisualMod implements ModInitializer {
     
     private static KeyBinding configKeyBinding;
     
-    public static boolean enableEqualizer = false;
-    public static boolean enableWaves = false;
+    // Настройки мода
+    public static boolean enableEqualizer = true;
+    public static boolean enableWaves = true;
+    public static boolean chromaMode = true; // Плавная смена цвета (Радуга)
 
     @Override
     public void onInitialize() {
-        // Регистрируем кнопку меню на P (в категории "Pulse Visual")
+        // Кнопка открытия GUI (на P)
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
@@ -31,7 +33,6 @@ public class PulseVisualMod implements ModInitializer {
                 "category.pulsevisual.general"
         ));
 
-        // Проверяем нажатие клавиши P каждый тик
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (configKeyBinding.wasPressed()) {
                 if (client.player != null) {
@@ -40,87 +41,111 @@ public class PulseVisualMod implements ModInitializer {
             }
         });
 
-        // Отрисовка интерфейса мода в игре
+        // Продвинутый HUD рендер
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player != null && client.textRenderer != null && client.options != null && !client.options.hudHidden) {
+            if (client.player != null && client.textRenderer != null && !client.options.hudHidden) {
                 
                 long time = System.currentTimeMillis();
+                int centerX = client.getWindow().getScaledWidth() / 2;
+                int centerY = client.getWindow().getScaledHeight() / 2;
 
-                // 1. Прыгающий эквалайзер
+                // Вычисляем динамический цвет (Chroma / Радуга)
+                int chromaColor = java.awt.Color.HSBtoRGB((time % 5000) / 5000f, 0.8f, 1f);
+                int mainColor = chromaMode ? chromaColor : 0xff00ffff; // Радуга или Голубой
+
+                // 1. КРУГОВОЙ ЭКВАЛАЙЗЕР (Вокруг прицела)
                 if (enableEqualizer) {
-                    int startX = client.getWindow().getScaledWidth() / 2 - 40;
-                    int startY = client.getWindow().getScaledHeight() - 60;
-                    
-                    for (int i = 0; i < 5; i++) {
-                        int height = 10 + (int)(Math.sin((time / 150.0) + i) * 8 + 8);
-                        DrawableHelper.fill(matrixStack, startX + (i * 15), startY - height, startX + (i * 15) + 8, startY, 0xff00ffff);
+                    int barsCount = 36; // Количество палочек в круге
+                    double baseRadius = 30.0; // Радиус круга вокруг прицела
+
+                    for (int i = 0; i < barsCount; i++) {
+                        // Вычисляем угол для каждой палочки
+                        double angle = (i * (360.0 / barsCount)) * Math.PI / 180.0;
+                        
+                        // Динамическая высота палочки, зависящая от времени и индекса
+                        double pulse = Math.sin((time / 200.0) + i * 0.5) * 7.0 + 7.0;
+                        // Если игрок бежит — палочки прыгают сильнее!
+                        if (client.player.isSprinting()) pulse *= 1.5; 
+
+                        double startX = centerX + Math.cos(angle) * baseRadius;
+                        double startY = centerY + Math.sin(angle) * baseRadius;
+                        double endX = centerX + Math.cos(angle) * (baseRadius + pulse);
+                        double endY = centerY + Math.sin(angle) * (baseRadius + pulse);
+
+                        // Рисуем палочки эквалайзера в виде пиксельных линий
+                        DrawableHelper.fill(matrixStack, (int)startX, (int)startY, (int)endX + 1, (int)endY + 1, mainColor);
                     }
                 }
 
-                // 2. Расширяющиеся круговые волны у прицела
+                // 2. ПОЛУПРОЗРАЧНЫЕ РАСШИРЯЮЩИЕСЯ ВОЛНЫ
                 if (enableWaves) {
-                    int centerX = client.getWindow().getScaledWidth() / 2;
-                    int centerY = client.getWindow().getScaledHeight() / 2;
-                    int waveRadius = 20 + (int)((time % 2000) / 50.0);
-                    
-                    DrawableHelper.fill(matrixStack, centerX - waveRadius, centerY - waveRadius, centerX + waveRadius, centerY - waveRadius + 1, 0x80ffffff);
-                    DrawableHelper.fill(matrixStack, centerX - waveRadius, centerY + waveRadius - 1, centerX + waveRadius, centerY + waveRadius, 0x80ffffff);
-                    DrawableHelper.fill(matrixStack, centerX - waveRadius, centerY - waveRadius, centerX - waveRadius + 1, centerY + waveRadius, 0x80ffffff);
-                    DrawableHelper.fill(matrixStack, centerX + waveRadius - 1, centerY - waveRadius, centerX + waveRadius, centerY + waveRadius, 0x80ffffff);
+                    // Создаем эффект трех бегущих кругов-волн
+                    for (int w = 0; w < 3; w++) {
+                        long waveTime = time + (w * 600);
+                        int radius = 15 + (int)((waveTime % 1800) / 30.0);
+                        
+                        // Плавное исчезновение волны к краям (альфа-канал)
+                        int alpha = 255 - (int)((waveTime % 1800) / 1800.0 * 255.0);
+                        int waveColor = (alpha << 24) | (mainColor & 0x00ffffff);
+
+                        // Отрисовка тонкого контура круга вокруг центра
+                        drawTargetCircle(matrixStack, centerX, centerY, radius, waveColor);
+                    }
                 }
 
-                // 3. Информационная панель в левом углу экрана
-                DrawableHelper.fill(matrixStack, 5, 5, 155, 45, 0x80000000);
-                client.textRenderer.draw(matrixStack, "§bPulse Visual §a[Active]", 10, 10, 0xffffff);
-                
-                String eqStatus = enableEqualizer ? "§aON" : "§cOFF";
-                String waveStatus = enableWaves ? "§aON" : "§cOFF";
-                
-                client.textRenderer.draw(matrixStack, "Equalizer: " + eqStatus, 10, 22, 0xffffff);
-                client.textRenderer.draw(matrixStack, "Wave Circles: " + waveStatus, 10, 32, 0xffffff);
+                // 3. Стильный вотермарк в углу экрана (стиль Pulse Visual)
+                DrawableHelper.fill(matrixStack, 4, 4, 130, 22, 0x90000000); // Фон
+                DrawableHelper.fill(matrixStack, 4, 4, 6, 22, mainColor); // Полоска слева
+                client.textRenderer.draw(matrixStack, "§lPULSE§r VISUAL", 12, 8, mainColor);
             }
         });
     }
 
-    // Внутренний класс экрана настроек
+    // Вспомогательный метод для рисования аккуратных контуров волн
+    private static void drawTargetCircle(MatrixStack matrices, int cx, int cy, int r, int color) {
+        DrawableHelper.fill(matrices, cx - r, cy - r, cx + r, cx - r + 1, color);
+        DrawableHelper.fill(matrices, cx - r, cy + r - 1, cx + r, cy + r, color);
+        DrawableHelper.fill(matrices, cx - r, cy - r, cx - r + 1, cy + r, color);
+        DrawableHelper.fill(matrices, cx + r - 1, cy - r, cx + r, cy + r, color);
+    }
+
+    // Прокачанное GUI меню
     public static class PulseVisualScreen extends Screen {
         public PulseVisualScreen() {
-            super(new LiteralText("Pulse Visual Settings"));
+            super(new LiteralText("Pulse Visual"));
         }
 
         @Override
         protected void init() {
-            int buttonWidth = 200;
-            int buttonHeight = 20;
-            int centerX = this.width / 2 - 100;
-            int centerY = this.height / 2;
+            int bWidth = 160;
+            int bHeight = 20;
+            int x = this.width / 2 - 80;
+            int y = this.height / 2 - 40;
 
-            // Кнопка включения/выключения Эквалайзера
-            this.addButton(new ButtonWidget(centerX, centerY - 40, buttonWidth, buttonHeight, 
-                new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")), button -> {
-                    enableEqualizer = !enableEqualizer;
-                    button.setMessage(new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")));
+            this.addButton(new ButtonWidget(x, y, bWidth, bHeight, new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")), b -> {
+                enableEqualizer = !enableEqualizer;
+                b.setMessage(new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")));
             }));
 
-            // Кнопка включения/выключения Волн
-            this.addButton(new ButtonWidget(centerX, centerY - 15, buttonWidth, buttonHeight, 
-                new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")), button -> {
-                    enableWaves = !enableWaves;
-                    button.setMessage(new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")));
+            this.addButton(new ButtonWidget(x, y + 25, bWidth, bHeight, new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")), b -> {
+                enableWaves = !enableWaves;
+                b.setMessage(new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")));
             }));
 
-            // Кнопка возврата в игру
-            this.addButton(new ButtonWidget(centerX, centerY + 20, buttonWidth, buttonHeight, 
-                new LiteralText("Close Menu"), button -> {
-                    this.client.openScreen(null);
+            this.addButton(new ButtonWidget(x, y + 50, bWidth, bHeight, new LiteralText("Chroma RGB: " + (chromaMode ? "ON" : "OFF")), b -> {
+                chromaMode = !chromaMode;
+                b.setMessage(new LiteralText("Chroma RGB: " + (chromaMode ? "ON" : "OFF")));
             }));
+
+            this.addButton(new ButtonWidget(x, y + 85, bWidth, bHeight, new LiteralText("Back to Game"), b -> this.client.openScreen(null)));
         }
 
         @Override
         public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
             this.renderBackground(matrices);
-            drawCenteredText(matrices, this.textRenderer, "§bPulse Visual §fOptions", this.width / 2, this.height / 2 - 70, 0xffffff);
+            int chromaColor = java.awt.Color.HSBtoRGB((System.currentTimeMillis() % 5000) / 5000f, 0.8f, 1f);
+            drawCenteredText(matrices, this.textRenderer, "PULSE VISUAL CLIENT", this.width / 2, this.height / 2 - 60, chromaMode ? chromaColor : 0xff00ffff);
             super.render(matrices, mouseX, mouseY, delta);
         }
     }
