@@ -20,12 +20,14 @@ public class PulseVisualMod implements ModInitializer {
     
     private static KeyBinding configKeyBinding;
     
-    public static boolean enableEqualizer = true;
-    public static boolean enableWaves = true;
-    public static boolean chromaMode = true;
+    // Оригинальные переключатели модулей Pulse Visual
+    public static boolean targetHud = true;       // Круговой эквалайзер вокруг прицела
+    public static boolean shockwaves = true;      // Круглые расходящиеся волны
+    public static boolean chromaRGB = true;       // Фирменный перелив цветов
 
     @Override
     public void onInitialize() {
+        // Регистрируем кнопку открытия меню на P
         configKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.pulsevisual.settings", 
                 InputUtil.Type.KEYSYM, 
@@ -41,6 +43,7 @@ public class PulseVisualMod implements ModInitializer {
             }
         });
 
+        // Движок отрисовки
         HudRenderCallback.EVENT.register((matrixStack, tickDelta) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null && client.textRenderer != null && !client.options.hudHidden) {
@@ -49,104 +52,94 @@ public class PulseVisualMod implements ModInitializer {
                 int centerX = client.getWindow().getScaledWidth() / 2;
                 int centerY = client.getWindow().getScaledHeight() / 2;
 
-                int chromaColor = java.awt.Color.HSBtoRGB((time % 4000) / 4000f, 0.8f, 1f);
-                int mainColor = chromaMode ? chromaColor : 0xff00ffff;
+                // Генерация оригинального Chroma-эффекта
+                int rgb = java.awt.Color.HSBtoRGB((time % 4000) / 4000f, 0.75f, 1f);
+                float r = ((rgb >> 16) & 0xFF) / 255f;
+                float g = ((rgb >> 8) & 0xFF) / 255f;
+                float b = (rgb & 0xFF) / 255f;
 
-                // Настройка OpenGL для гладкого рендеринга линий
+                // Включаем блендинг OpenGL для мягких линий и прозрачности
                 RenderSystem.enableBlend();
                 RenderSystem.disableTexture();
                 RenderSystem.defaultBlendFunc();
 
-                // 1. ОРИГИНАЛЬНЫЙ КРУГОВОЙ ЭКВАЛАЙЗЕР
-                if (enableEqualizer) {
-                    int barsCount = 60; // Больше полос для высокой детализации
-                    double baseRadius = 35.0;
+                // 1. ОРИГИНАЛЬНЫЙ RADIAL EQUALIZER (Вокруг прицела)
+                if (targetHud) {
+                    int lines = 45; // Число лучей
+                    double innerRadius = 28.0;
 
-                    for (int i = 0; i < barsCount; i++) {
-                        double angle = (i * (360.0 / barsCount)) * Math.PI / 180.0;
+                    for (int i = 0; i < lines; i++) {
+                        double angle = (i * (360.0 / lines)) * Math.PI / 180.0;
                         
-                        // Создаем сложную волну спектра
-                        double pulse = Math.sin((time / 150.0) + i * 0.4) * 6.0;
-                        pulse += Math.cos((time / 250.0) - i * 0.2) * 4.0;
-                        pulse = Math.max(0, pulse + 4.0); // Исключаем отрицательные значения
+                        // Просчет высоты луча (симуляция звуковой частоты клиента)
+                        double dynamicPulse = Math.sin((time / 130.0) + i * 0.35) * 5.5;
+                        dynamicPulse += Math.cos((time / 220.0) - i * 0.15) * 3.5;
+                        dynamicPulse = Math.max(1.0, dynamicPulse + 3.0);
 
                         if (client.player.isSprinting()) {
-                            pulse *= 1.4;
+                            dynamicPulse *= 1.3; // Усиление импульса при движении
                         }
 
-                        float r = ((mainColor >> 16) & 0xFF) / 255f;
-                        float g = ((mainColor >> 8) & 0xFF) / 255f;
-                        float b = (mainColor & 0xFF) / 255f;
+                        double x1 = centerX + Math.cos(angle) * innerRadius;
+                        double y1 = centerY + Math.sin(angle) * innerRadius;
+                        double x2 = centerX + Math.cos(angle) * (innerRadius + dynamicPulse);
+                        double y2 = centerY + Math.sin(angle) * (innerRadius + dynamicPulse);
 
-                        double startX = centerX + Math.cos(angle) * baseRadius;
-                        double startY = centerY + Math.sin(angle) * baseRadius;
-                        double endX = centerX + Math.cos(angle) * (baseRadius + pulse);
-                        double endY = centerY + Math.sin(angle) * (baseRadius + pulse);
-
-                        // Отрезок рендерится как гладкая линия
-                        drawLine(matrixStack, startX, startY, endX, endY, r, g, b, 1.0f, 2.0f);
+                        drawPulseLine(matrixStack, x1, y1, x2, y2, r, g, b, 1.0f);
                     }
                 }
 
-                // 2. ИДЕАЛЬНО КРУГЛЫЕ ВОЛНЫ
-                if (enableWaves) {
-                    for (int w = 0; w < 3; w++) {
-                        long waveTime = time + (w * 700);
-                        double radius = 15.0 + ((waveTime % 2100) / 25.0);
-                        
-                        float alpha = 1.0f - (float)((waveTime % 2100) / 2100.0);
-                        
-                        float r = ((mainColor >> 16) & 0xFF) / 255f;
-                        float g = ((mainColor >> 8) & 0xFF) / 255f;
-                        float b = (mainColor & 0xFF) / 255f;
+                // 2. SHOCKWAVES (Идеально круглые волны с затуханием альфы)
+                if (shockwaves) {
+                    for (int step = 0; step < 3; step++) {
+                        long waveOffset = time + (step * 650);
+                        double radius = 12.0 + ((waveOffset % 1950) / 22.0);
+                        float fadeAlpha = 1.0f - (float)((waveOffset % 1950) / 1950.0);
 
-                        drawSmoothCircle(matrixStack, centerX, centerY, radius, r, g, b, alpha);
+                        drawPulseCircle(matrixStack, centerX, centerY, radius, r, g, b, fadeAlpha);
                     }
                 }
 
                 RenderSystem.enableTexture();
                 RenderSystem.disableBlend();
 
-                // 3. ВОТЕРМАРК В СТИЛЕ PULSE VISUAL
-                DrawableHelper.fill(matrixStack, 5, 5, 125, 23, 0xB0000000);
-                DrawableHelper.fill(matrixStack, 5, 5, 7, 23, mainColor);
-                client.textRenderer.draw(matrixStack, "§lPULSE§r VISUAL", 14, 9, mainColor);
+                // 3. СТИЛЬНЫЙ ВОТЕРМАРК PULSE
+                DrawableHelper.fill(matrixStack, 6, 6, 120, 24, 0xAA000000);
+                DrawableHelper.fill(matrixStack, 6, 6, 8, 24, rgb);
+                client.textRenderer.draw(matrixStack, "PULSE CLIENT", 14, 10, rgb);
             }
         });
     }
 
-    // Метод отрисовки гладкой линии через OpenGL BufferBuilder
-    private static void drawLine(MatrixStack matrices, double startX, double startY, double endX, double endY, float r, float g, float b, float a, float width) {
-        RenderSystem.lineWidth(width);
+    // Рендер гладкой неоновой линии
+    private static void drawPulseLine(MatrixStack matrices, double x1, double y1, double x2, double y2, float r, float g, float b, float a) {
+        RenderSystem.lineWidth(2.0f);
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuffer();
-        bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), (float)startX, (float)startY, 0).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), (float)endX, (float)endY, 0).color(r, g, b, a).next();
-        
+        BufferBuilder buffer = tessellator.getBuffer();
+        buffer.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        buffer.vertex(matrices.peek().getPositionMatrix(), (float)x1, (float)y1, 0).color(r, g, b, a).next();
+        buffer.vertex(matrices.peek().getPositionMatrix(), (float)x2, (float)y2, 0).color(r, g, b, a).next();
         tessellator.draw();
     }
 
-    // Метод отрисовки идеальной окружности из 64 сегментов
-    private static void drawSmoothCircle(MatrixStack matrices, double cx, double cy, double radius, float r, float g, float b, float a) {
+    // Рендер точного круга волны (64 полигона)
+    private static void drawPulseCircle(MatrixStack matrices, double cx, double cy, double radius, float r, float g, float b, float a) {
         RenderSystem.lineWidth(1.5f);
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuffer();
-        bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINE_STRIP, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = tessellator.getBuffer();
+        buffer.begin(VertexFormat.DrawMode.DEBUG_LINE_STRIP, VertexFormats.POSITION_COLOR);
 
-        int segments = 64;
-        for (int i = 0; i <= segments; i++) {
-            double angle = i * (Math.PI * 2 / segments);
-            double x = cx + Math.cos(angle) * radius;
-            double y = cy + Math.sin(angle) * radius;
-            bufferBuilder.vertex(matrices.peek().getPositionMatrix(), (float)x, (float)y, 0).color(r, g, b, a).next();
+        int points = 64;
+        for (int i = 0; i <= points; i++) {
+            double theta = i * (Math.PI * 2 / points);
+            double x = cx + Math.cos(theta) * radius;
+            double y = cy + Math.sin(theta) * radius;
+            buffer.vertex(matrices.peek().getPositionMatrix(), (float)x, (float)y, 0).color(r, g, b, a).next();
         }
-
         tessellator.draw();
     }
 
-    // Минималистичное ClickGUI меню
+    // Меню настроек
     public static class PulseVisualScreen extends Screen {
         public PulseVisualScreen() {
             super(new LiteralText("Pulse Visual"));
@@ -154,34 +147,38 @@ public class PulseVisualMod implements ModInitializer {
 
         @Override
         protected void init() {
-            int bWidth = 160;
-            int bHeight = 20;
-            int x = this.width / 2 - 80;
-            int y = this.height / 2 - 30;
+            int w = 150;
+            int h = 20;
+            int x = this.width / 2 - 75;
+            int y = this.height / 2 - 35;
 
-            this.addButton(new ButtonWidget(x, y, bWidth, bHeight, new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")), b -> {
-                enableEqualizer = !enableEqualizer;
-                b.setMessage(new LiteralText("Equalizer: " + (enableEqualizer ? "ON" : "OFF")));
+            this.addButton(new ButtonWidget(x, y, w, h, new LiteralText("TargetHUD: " + (targetHUDName())), b -> {
+                targetHud = !targetHud;
+                b.setMessage(new LiteralText("TargetHUD: " + (targetHUDName())));
             }));
 
-            this.addButton(new ButtonWidget(x, y + 25, bWidth, bHeight, new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")), b -> {
-                enableWaves = !enableWaves;
-                b.setMessage(new LiteralText("Wave Circles: " + (enableWaves ? "ON" : "OFF")));
+            this.addButton(new ButtonWidget(x, y + 24, w, h, new LiteralText("Shockwaves: " + (shockwaves ? "ON" : "OFF")), b -> {
+                shockwaves = !shockwaves;
+                b.setMessage(new LiteralText("Shockwaves: " + (shockwaves ? "ON" : "OFF")));
             }));
 
-            this.addButton(new ButtonWidget(x, y + 50, bWidth, bHeight, new LiteralText("Chroma RGB: " + (chromaMode ? "ON" : "OFF")), b -> {
-                chromaMode = !chromaMode;
-                b.setMessage(new LiteralText("Chroma RGB: " + (chromaMode ? "ON" : "OFF")));
+            this.addButton(new ButtonWidget(x, y + 48, w, h, new LiteralText("Chroma RGB: " + (chromaRGB ? "ON" : "OFF")), b -> {
+                chromaRGB = !chromaRGB;
+                b.setMessage(new LiteralText("Chroma RGB: " + (chromaRGB ? "ON" : "OFF")));
             }));
 
-            this.addButton(new ButtonWidget(x, y + 85, bWidth, bHeight, new LiteralText("Close"), b -> this.client.openScreen(null)));
+            this.addButton(new ButtonWidget(x, y + 78, w, h, new LiteralText("Close Menu"), b -> this.client.openScreen(null)));
+        }
+
+        private String targetHUDName() {
+            return targetHud ? "ON" : "OFF";
         }
 
         @Override
         public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
             this.renderBackground(matrices);
-            int chromaColor = java.awt.Color.HSBtoRGB((System.currentTimeMillis() % 4000) / 4000f, 0.8f, 1f);
-            drawCenteredText(matrices, this.textRenderer, "PULSE VISUAL CLIENT", this.width / 2, this.height / 2 - 50, chromaMode ? chromaColor : 0xff00ffff);
+            int rgb = java.awt.Color.HSBtoRGB((System.currentTimeMillis() % 4000) / 4000f, 0.75f, 1f);
+            drawCenteredText(matrices, this.textRenderer, "PULSE VISUAL CONTROL", this.width / 2, this.height / 2 - 55, chromaRGB ? rgb : 0xff00ffff);
             super.render(matrices, mouseX, mouseY, delta);
         }
     }
