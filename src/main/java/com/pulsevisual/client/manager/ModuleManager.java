@@ -4,7 +4,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.api.EnvType;
 import java.util.ArrayList;
 import java.util.List;
-import com.pulsevisual.client.module.Module;
+import com.pulsevisual.client.module.*;
 
 @Environment(EnvType.CLIENT)
 public class ModuleManager {
