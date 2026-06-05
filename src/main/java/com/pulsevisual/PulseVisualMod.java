@@ -5,6 +5,6 @@ import net.fabricmc.api.ModInitializer;
 public class PulseVisualMod implements ModInitializer {
     @Override
     public void onInitialize() {
-        System.out.println("[Pulse Visual] Common initialization complete!");
+        System.out.println("Pulse Visual Mod Initialized!");
     }
 }
