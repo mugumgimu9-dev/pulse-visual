@@ -1,4 +1,4 @@
-package com.pulsevisual.client.module;
+package com.pulsevisual.client.manager;
 
 import net.fabricmc.api.Environment;
 import net.fabricmc.api.EnvType;
