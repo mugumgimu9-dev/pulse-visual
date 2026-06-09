@@ -22,14 +22,18 @@ public class ClientPlayerEntityMixin {
                 
                 if (action.equalsIgnoreCase("add")) {
                     FriendManager.addFriend(nickname);
-                    net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(
-                        new LiteralText("§a[Pulse] " + nickname + " добавлен в список друзей!"), false
-                    );
+                    if (net.minecraft.client.MinecraftClient.getInstance().player != null) {
+                        net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(
+                            new LiteralText("§a[Pulse] " + nickname + " добавлен в список друзей!"), false
+                        );
+                    }
                 } else if (action.equalsIgnoreCase("del") || action.equalsIgnoreCase("remove")) {
                     FriendManager.removeFriend(nickname);
-                    net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(
-                        new LiteralText("§c[Pulse] " + nickname + " удален из друзей."), false
-                    );
+                    if (net.minecraft.client.MinecraftClient.getInstance().player != null) {
+                        net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(
+                            new LiteralText("§c[Pulse] " + nickname + " удален из друзей."), false
+                        );
+                    }
                 }
             }
         }
