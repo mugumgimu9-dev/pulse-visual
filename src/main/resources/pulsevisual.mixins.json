@@ -1,9 +1,16 @@
 {
   "required": true,
   "package": "com.pulsevisual.client.mixin",
-  "compatibilityLevel": "JAVA_17",
-  "mixins": [],
-  "client": [],
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "GameRendererMixin",
+    "InGameHudMixin"
+  ],
+  "client": [
+    "ClientPlayerEntityMixin",
+    "MinecraftClientMixin",
+    "EntityMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
