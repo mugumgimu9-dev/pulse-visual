@@ -1,6 +1,8 @@
-package com.pulsevisual.client.mixin;
+package com.pulsevisual.mixin;
 
+import com.features.FriendManager;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.text.LiteralText;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -8,9 +10,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerEntityMixin {
-
-    @Inject(at = @At("HEAD"), method = "tick")
-    private void onTick(CallbackInfo info) {
-        // Здесь будет выполняться код мода каждый тик игрока
+    @Inject(method = "sendChatMessage", at = @At("HEAD"), cancellable = true)
+    private void onSendMessage(String message, CallbackInfo ci) {
+        if (message.startsWith(".friends ")) {
+            ci.cancel(); // Отменяем отправку сообщения на сервер
+            
+            String[] args = message.split(" ");
+            if (args.length >= 3) {
+                String action = args[1];
+                String nickname = args[2];
+                
+                if (action.equalsIgnoreCase("add")) {
+                    FriendManager.addFriend(nickname);
+                    net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(
+                        new LiteralText("§a[Pulse] " + nickname + " добавлен в список друзей!"), false
+                    );
+                } else if (action.equalsIgnoreCase("del") || action.equalsIgnoreCase("remove")) {
+                    FriendManager.removeFriend(nickname);
+                    net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(
+                        new LiteralText("§c[Pulse] " + nickname + " удален из друзей."), false
+                    );
+                }
+            }
+        }
     }
 }
