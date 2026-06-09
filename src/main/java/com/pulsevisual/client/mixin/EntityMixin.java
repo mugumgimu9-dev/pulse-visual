@@ -14,7 +14,6 @@ public class EntityMixin {
     private void onIsGlowing(CallbackInfoReturnable<Boolean> cir) {
         Entity entity = (Entity) (Object) this;
         
-        // Если это игрок и он добавлен в друзья — включаем ему подсветку
         if (entity instanceof PlayerEntity) {
             String name = entity.getName().getString();
             if (FriendManager.isFriend(name)) {
