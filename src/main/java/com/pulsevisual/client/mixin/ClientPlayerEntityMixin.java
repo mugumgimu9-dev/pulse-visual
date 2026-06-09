@@ -1,4 +1,4 @@
-package com.pulsevisual.mixin;
+package com.pulsevisual.client.mixin;
 
 import com.features.FriendManager;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -13,7 +13,7 @@ public class ClientPlayerEntityMixin {
     @Inject(method = "sendChatMessage", at = @At("HEAD"), cancellable = true)
     private void onSendMessage(String message, CallbackInfo ci) {
         if (message.startsWith(".friends ")) {
-            ci.cancel(); // Отменяем отправку сообщения на сервер
+            ci.cancel();
             
             String[] args = message.split(" ");
             if (args.length >= 3) {
