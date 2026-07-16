@@ -4,7 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.*;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
@@ -62,58 +62,30 @@ public class AdvancedESP {
         float w = (float) entityBox.getXLength() / 2f;
         float h = (float) entityBox.getYLength();
 
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuffer();
-
-        // Полностью ванильный и безопасный запуск буфера без кастомных шейдеров и DrawMode
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-
-        int red = color.getRed();
-        int green = color.getGreen();
-        int blue = color.getBlue();
-        int alpha = 255;
+        // Рендерим через чистый OpenGL 11 — этот код не зависит от маппингов Minecraft вообще!
+        GL11.glLineWidth(2.0f);
+        GL11.glBegin(GL11.GL_LINES);
+        GL11.glColor4f(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f, 1.0f);
 
         // Нижний квадрат
-        bufferBuilder.vertex(x - w, y, z - w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x + w, y, z - w).color(red, green, blue, alpha).next();
-        
-        bufferBuilder.vertex(x + w, y, z - w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x + w, y, z + w).color(red, green, blue, alpha).next();
-        
-        bufferBuilder.vertex(x + w, y, z + w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x - w, y, z + w).color(red, green, blue, alpha).next();
-        
-        bufferBuilder.vertex(x - w, y, z + w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x - w, y, z - w).color(red, green, blue, alpha).next();
+        GL11.glVertex3d(x - w, y, z - w); GL11.glVertex3d(x + w, y, z - w);
+        GL11.glVertex3d(x + w, y, z - w); GL11.glVertex3d(x + w, y, z + w);
+        GL11.glVertex3d(x + w, y, z + w); GL11.glVertex3d(x - w, y, z + w);
+        GL11.glVertex3d(x - w, y, z + w); GL11.glVertex3d(x - w, y, z - w);
 
         // Верхний квадрат
-        bufferBuilder.vertex(x - w, y + h, z - w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x + w, y + h, z - w).color(red, green, blue, alpha).next();
-        
-        bufferBuilder.vertex(x + w, y + h, z - w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x + w, y + h, z + w).color(red, green, blue, alpha).next();
-        
-        bufferBuilder.vertex(x + w, y + h, z + w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x - w, y + h, z + w).color(red, green, blue, alpha).next();
-        
-        bufferBuilder.vertex(x - w, y + h, z + w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x - w, y + h, z - w).color(red, green, blue, alpha).next();
+        GL11.glVertex3d(x - w, y + h, z - w); GL11.glVertex3d(x + w, y + h, z - w);
+        GL11.glVertex3d(x + w, y + h, z - w); GL11.glVertex3d(x + w, y + h, z + w);
+        GL11.glVertex3d(x + w, y + h, z + w); GL11.glVertex3d(x - w, y + h, z + w);
+        GL11.glVertex3d(x - w, y + h, z + w); GL11.glVertex3d(x - w, y + h, z - w);
 
         // Вертикальные стойки
-        bufferBuilder.vertex(x - w, y, z - w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x - w, y + h, z - w).color(red, green, blue, alpha).next();
+        GL11.glVertex3d(x - w, y, z - w); GL11.glVertex3d(x - w, y + h, z - w);
+        GL11.glVertex3d(x + w, y, z - w); GL11.glVertex3d(x + w, y + h, z - w);
+        GL11.glVertex3d(x + w, y, z + w); GL11.glVertex3d(x + w, y + h, z + w);
+        GL11.glVertex3d(x - w, y, z + w); GL11.glVertex3d(x - w, y + h, z + w);
 
-        bufferBuilder.vertex(x + w, y, z - w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x + w, y + h, z - w).color(red, green, blue, alpha).next();
-
-        bufferBuilder.vertex(x + w, y, z + w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x + w, y + h, z + w).color(red, green, blue, alpha).next();
-
-        bufferBuilder.vertex(x - w, y, z + w).color(red, green, blue, alpha).next();
-        bufferBuilder.vertex(x - w, y + h, z + w).color(red, green, blue, alpha).next();
-
-        tessellator.draw();
+        GL11.glEnd();
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         RenderSystem.depthMask(true);
