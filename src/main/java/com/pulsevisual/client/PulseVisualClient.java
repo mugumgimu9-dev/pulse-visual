@@ -27,15 +27,22 @@ public class PulseVisualClient implements ClientModInitializer {
     public static ConfigManager configManager;
     public static KeybindManager keybindManager;
 
+    // Инициализируем наши новые модули
     private final TabletTriggerBot triggerBot = new TabletTriggerBot();
+    private final AdvancedESP advancedESP = new AdvancedESP();
 
     @Override
     public void onInitializeClient() {
+        // Регистрируем Триггербот на проверку каждый тик
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             triggerBot.onTick(client);
         });
+
+        // Запускаем продвинутый ESP
+        advancedESP.init();
     }
 
+    // --- МОДУЛЬ: ТРИГГЕРБОТ ---
     public static class TabletTriggerBot {
         private final boolean isEnabled = true;
         private final boolean attackPlayersOnly = true;
@@ -53,7 +60,6 @@ public class PulseVisualClient implements ClientModInitializer {
                 EntityHitResult entityHitResult = (EntityHitResult) hitResult;
                 Entity target = entityHitResult.getEntity();
 
-                // Исправлено: проверяем только что цель жива
                 if (target != null && target.isAlive()) {
                     if (attackPlayersOnly && !(target instanceof PlayerEntity)) {
                         return;
