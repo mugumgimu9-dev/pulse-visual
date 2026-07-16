@@ -27,20 +27,15 @@ public class PulseVisualClient implements ClientModInitializer {
     public static ConfigManager configManager;
     public static KeybindManager keybindManager;
 
-    // Создаем триггербот
     private final TabletTriggerBot triggerBot = new TabletTriggerBot();
 
     @Override
     public void onInitializeClient() {
-        // Твоя старая логика (если менеджеры инициализировались тут, они останутся)
-        
-        // Регистрируем триггербот на каждый тик
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             triggerBot.onTick(client);
         });
     }
 
-    // Встроенный класс триггербота
     public static class TabletTriggerBot {
         private final boolean isEnabled = true;
         private final boolean attackPlayersOnly = true;
@@ -58,7 +53,8 @@ public class PulseVisualClient implements ClientModInitializer {
                 EntityHitResult entityHitResult = (EntityHitResult) hitResult;
                 Entity target = entityHitResult.getEntity();
 
-                if (target.isAlive() && !target.isRemoved()) {
+                // Исправлено: проверяем только что цель жива
+                if (target != null && target.isAlive()) {
                     if (attackPlayersOnly && !(target instanceof PlayerEntity)) {
                         return;
                     }
