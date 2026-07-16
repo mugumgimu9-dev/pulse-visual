@@ -18,7 +18,7 @@ public class AdvancedESP {
     private final MinecraftClient client = MinecraftClient.getInstance();
 
     public boolean isEnabled = true;
-    public int renderMode = 1; // 1 = Боксы, 2 = Шейдеры
+    public int renderMode = 1; // 1 = Боксы, 2 = Шейдеры (Свечение)
     public int colorMode = 0;  // 0 = Статичный, 1 = По здоровью, 2 = Радуга
     public Color staticColor = Color.RED;
 
@@ -53,19 +53,73 @@ public class AdvancedESP {
         RenderSystem.depthMask(false);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
 
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuffer();
-
+        matrices.push();
+        
+        // Получаем позицию относительно камеры
         double x = entity.getX() - camera.getPos().x;
         double y = entity.getY() - camera.getPos().y;
         double z = entity.getZ() - camera.getPos().z;
+        
+        matrices.translate(x, y, z);
 
-        Box box = entity.getBoundingBox();
-        Box drawBox = new Box(x - (box.getXLength() / 2), y, z - (box.getZLength() / 2),
-                               x + (box.getXLength() / 2), y + box.getYLength(), z + (box.getZLength() / 2));
+        Box b = entity.getBoundingBox();
+        float w = (float) b.getXLength() / 2f;
+        float h = (float) b.getYLength();
 
-        // Вызываем drawBox напрямую. Строку RenderSystem.setShader мы полностью убрали.
-        WorldRenderer.drawBox(matrices, bufferBuilder, drawBox, color.getRed()/255f, color.getGreen()/255f, color.getBlue()/255f, 0.6f);
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder bufferBuilder = tessellator.getBuffer();
+
+        // Полностью безопасный рендер через чистый OpenGL без ломающихся методов маппинга
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        
+        // В Java 17 / Loom режим DrawMode.DEBUG_LINES инициализируется через VertexFormat.DrawMode
+        // Используем совместимый вызов буфера
+        bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        int r = color.getRed(), g = color.getGreen(), b = color.getBlue(), a = 255;
+
+        // Рисуем линии бокса вручную (Нижний квадрат)
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, -w).color(r, g, b, a).next();
+        
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, w).color(r, g, b, a).next();
+        
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, w).color(r, g, b, a).next();
+        
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, -w).color(r, g, b, a).next();
+
+        // Верхний квадрат
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, -w).color(r, g, b, a).next();
+        
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, w).color(r, g, b, a).next();
+        
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, w).color(r, g, b, a).next();
+        
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, -w).color(r, g, b, a).next();
+
+        // Вертикальные стойки
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, -w).color(r, g, b, a).next();
+
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, -w).color(r, g, b, a).next();
+
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, w).color(r, g, b, a).next();
+
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, w).color(r, g, b, a).next();
+
+        tessellator.draw();
+
+        matrices.pop();
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         RenderSystem.depthMask(true);
