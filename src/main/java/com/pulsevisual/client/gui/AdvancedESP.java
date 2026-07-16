@@ -1,4 +1,4 @@
-package com.pulsevisual.client.gui; // Пакет изменен на .gui, так как файл лежит там
+package com.pulsevisual.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -52,9 +52,6 @@ public class AdvancedESP {
         RenderSystem.disableTexture();
         RenderSystem.depthMask(false);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
-        
-        // Переключаем рендер на дебаг-линии без использования VertexFormat.DrawMode
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder bufferBuilder = tessellator.getBuffer();
@@ -67,8 +64,7 @@ public class AdvancedESP {
         Box drawBox = new Box(x - (box.getXLength() / 2), y, z - (box.getZLength() / 2),
                                x + (box.getXLength() / 2), y + box.getYLength(), z + (box.getZLength() / 2));
 
-        // Безопасный вызов отрисовки контура через встроенный WorldRenderer
-        // Он сам внутри себя открывает и закрывает буфер нужным образом
+        // Вызываем drawBox напрямую. Строку RenderSystem.setShader мы полностью убрали.
         WorldRenderer.drawBox(matrices, bufferBuilder, drawBox, color.getRed()/255f, color.getGreen()/255f, color.getBlue()/255f, 0.6f);
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
