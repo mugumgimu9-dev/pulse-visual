@@ -58,58 +58,60 @@ public class AdvancedESP {
         double y = entity.getY() - camera.getPos().y;
         double z = entity.getZ() - camera.getPos().z;
 
-        Box b = entity.getBoundingBox();
-        float w = (float) b.getXLength() / 2f;
-        float h = (float) b.getYLength();
+        Box entityBox = entity.getBoundingBox();
+        float w = (float) entityBox.getXLength() / 2f;
+        float h = (float) entityBox.getYLength();
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder bufferBuilder = tessellator.getBuffer();
 
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        
-        // Рисуем линии напрямую через координаты, без использования MatrixStack.Entry
+        // Полностью ванильный и безопасный запуск буфера без кастомных шейдеров и DrawMode
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-        int r = color.getRed(), g = color.getGreen(), b = color.getBlue(), a = 255;
+        int red = color.getRed();
+        int green = color.getGreen();
+        int blue = color.getBlue();
+        int alpha = 255;
 
         // Нижний квадрат
-        bufferBuilder.vertex(x - w, y, z - w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x + w, y, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z - w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x + w, y, z - w).color(red, green, blue, alpha).next();
         
-        bufferBuilder.vertex(x + w, y, z - w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x + w, y, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z - w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x + w, y, z + w).color(red, green, blue, alpha).next();
         
-        bufferBuilder.vertex(x + w, y, z + w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x - w, y, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z + w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x - w, y, z + w).color(red, green, blue, alpha).next();
         
-        bufferBuilder.vertex(x - w, y, z + w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x - w, y, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z + w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x - w, y, z - w).color(red, green, blue, alpha).next();
 
         // Верхний квадрат
-        bufferBuilder.vertex(x - w, y + h, z - w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x + w, y + h, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z - w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x + w, y + h, z - w).color(red, green, blue, alpha).next();
         
-        bufferBuilder.vertex(x + w, y + h, z - w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x + w, y + h, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z - w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x + w, y + h, z + w).color(red, green, blue, alpha).next();
         
-        bufferBuilder.vertex(x + w, y + h, z + w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x - w, y + h, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z + w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x - w, y + h, z + w).color(red, green, blue, alpha).next();
         
-        bufferBuilder.vertex(x - w, y + h, z + w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x - w, y + h, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z + w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x - w, y + h, z - w).color(red, green, blue, alpha).next();
 
         // Вертикальные стойки
-        bufferBuilder.vertex(x - w, y, z - w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x - w, y + h, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z - w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x - w, y + h, z - w).color(red, green, blue, alpha).next();
 
-        bufferBuilder.vertex(x + w, y, z - w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x + w, y + h, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z - w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x + w, y + h, z - w).color(red, green, blue, alpha).next();
 
-        bufferBuilder.vertex(x + w, y, z + w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x + w, y + h, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z + w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x + w, y + h, z + w).color(red, green, blue, alpha).next();
 
-        bufferBuilder.vertex(x - w, y, z + w).color(r, g, b, a).next();
-        bufferBuilder.vertex(x - w, y + h, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z + w).color(red, green, blue, alpha).next();
+        bufferBuilder.vertex(x - w, y + h, z + w).color(red, green, blue, alpha).next();
 
         tessellator.draw();
 
