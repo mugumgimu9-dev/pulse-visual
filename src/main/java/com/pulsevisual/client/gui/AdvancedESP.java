@@ -53,14 +53,10 @@ public class AdvancedESP {
         RenderSystem.depthMask(false);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
 
-        matrices.push();
-        
         // Получаем позицию относительно камеры
         double x = entity.getX() - camera.getPos().x;
         double y = entity.getY() - camera.getPos().y;
         double z = entity.getZ() - camera.getPos().z;
-        
-        matrices.translate(x, y, z);
 
         Box b = entity.getBoundingBox();
         float w = (float) b.getXLength() / 2f;
@@ -69,57 +65,53 @@ public class AdvancedESP {
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder bufferBuilder = tessellator.getBuffer();
 
-        // Полностью безопасный рендер через чистый OpenGL без ломающихся методов маппинга
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         
-        // В Java 17 / Loom режим DrawMode.DEBUG_LINES инициализируется через VertexFormat.DrawMode
-        // Используем совместимый вызов буфера
+        // Рисуем линии напрямую через координаты, без использования MatrixStack.Entry
         bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         int r = color.getRed(), g = color.getGreen(), b = color.getBlue(), a = 255;
 
-        // Рисуем линии бокса вручную (Нижний квадрат)
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, -w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, -w).color(r, g, b, a).next();
+        // Нижний квадрат
+        bufferBuilder.vertex(x - w, y, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z - w).color(r, g, b, a).next();
         
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, -w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z + w).color(r, g, b, a).next();
         
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z + w).color(r, g, b, a).next();
         
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z - w).color(r, g, b, a).next();
 
         // Верхний квадрат
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, -w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z - w).color(r, g, b, a).next();
         
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, -w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z + w).color(r, g, b, a).next();
         
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z + w).color(r, g, b, a).next();
         
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z - w).color(r, g, b, a).next();
 
         // Вертикальные стойки
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, -w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z - w).color(r, g, b, a).next();
 
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, -w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, -w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z - w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z - w).color(r, g, b, a).next();
 
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, 0, w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), w, h, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x + w, y + h, z + w).color(r, g, b, a).next();
 
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, 0, w).color(r, g, b, a).next();
-        bufferBuilder.vertex(matrices.peek().getPositionMatrix(), -w, h, w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y, z + w).color(r, g, b, a).next();
+        bufferBuilder.vertex(x - w, y + h, z + w).color(r, g, b, a).next();
 
         tessellator.draw();
-
-        matrices.pop();
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         RenderSystem.depthMask(true);
