@@ -11,6 +11,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import com.features.FastExpThrower;
 
+// Подключаем наш ESP из папки gui
+import com.pulsevisual.client.gui.AdvancedESP;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
@@ -27,13 +30,13 @@ public class PulseVisualClient implements ClientModInitializer {
     public static ConfigManager configManager;
     public static KeybindManager keybindManager;
 
-    // Инициализируем наши новые модули
+    // Инициализируем Триггербот и исправленный ESP
     private final TabletTriggerBot triggerBot = new TabletTriggerBot();
     private final AdvancedESP advancedESP = new AdvancedESP();
 
     @Override
     public void onInitializeClient() {
-        // Регистрируем Триггербот на проверку каждый тик
+        // Регистрируем Триггербот на каждый тик
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             triggerBot.onTick(client);
         });
