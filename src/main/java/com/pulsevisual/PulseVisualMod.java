@@ -14,12 +14,15 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.LiteralText;
+import net.minecraft.item.Items;
+import net.minecraft.util.Hand;
 import org.lwjgl.glfw.GLFW;
 
 public class PulseVisualMod implements ModInitializer {
     
     private static KeyBinding configKeyBinding;
     private static KeyBinding swapKeyBinding; 
+    private static KeyBinding auKeyBinding; // Автодействие для шалкера
     
     public static boolean targetHud = true;
     public static boolean shockwaves = true;
@@ -44,6 +47,14 @@ public class PulseVisualMod implements ModInitializer {
                 "category.pulsevisual.general"
         ));
 
+        // Кнопка для автозакладывания зелёного шалкера и выполнения действий (по умолчанию не назначена)
+        auKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.pulsevisual.au",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_UNKNOWN,
+                "category.pulsevisual.general"
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null || client.interactionManager == null) return;
 
@@ -54,29 +65,81 @@ public class PulseVisualMod implements ModInitializer {
             // Логика автоматического закидывания вещей в левую руку по кнопке R
             if (inventoryPuller && client.currentScreen == null) {
                 while (swapKeyBinding.wasPressed()) {
-                    
                     client.player.sendMessage(new LiteralText("§b[Pulse] Кнопка R нажата!"), false);
                     boolean itemFound = false;
-                    
+
                     for (int slot = 9; slot < 45; slot++) {
                         if (!client.player.inventory.getStack(slot < 36 ? slot : slot - 36).isEmpty()) {
-                            
                             int syncId = client.player.currentScreenHandler.syncId;
                             int offHandSlotId = 45; // ID слота левой руки в Майнкрафт
-                            
+
                             client.player.sendMessage(new LiteralText("§e[Pulse] Предмет отправлен во вторую руку!"), false);
 
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
                             client.interactionManager.clickSlot(syncId, offHandSlotId, 0, SlotActionType.PICKUP, client.player);
                             client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
-                            
+
                             itemFound = true;
                             break; 
                         }
                     }
-                    
+
                     if (!itemFound) {
                         client.player.sendMessage(new LiteralText("§c[Pulse] Ошибка: Инвентарь полностью пуст!"), false);
+                    }
+                }
+
+                // Обработка новой AU-кнопки: ищем зелёный шалкер и выполняем требуемые действия
+                while (auKeyBinding.wasPressed()) {
+                    client.player.sendMessage(new LiteralText("§b[Pulse] AU-кнопка нажата! Попытка найти зелёный шалкер..."), false);
+                    boolean found = false;
+                    int syncId = client.player.currentScreenHandler.syncId;
+                    int offHandSlotId = 45; // слот оффхенда на сервере
+
+                    for (int slot = 9; slot < 45; slot++) {
+                        // Для чтения из инвентаря используем индексы игрока
+                        int invIndex = slot < 36 ? slot : slot - 36;
+                        if (!client.player.inventory.getStack(invIndex).isEmpty()) {
+                            if (client.player.inventory.getStack(invIndex).getItem() == Items.GREEN_SHULKER_BOX) {
+                                // Перемещаем предмет во вторую руку
+                                client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
+                                client.interactionManager.clickSlot(syncId, offHandSlotId, 0, SlotActionType.PICKUP, client.player);
+                                client.interactionManager.clickSlot(syncId, slot, 0, SlotActionType.PICKUP, client.player);
+
+                                client.player.sendMessage(new LiteralText("§a[Pulse] Зелёный шалкер положен во вторую руку."), false);
+
+                                // Используем предмет в оффхенде (открыть/использовать)
+                                try {
+                                    client.interactionManager.interactItem(client.player, Hand.OFF_HAND);
+                                } catch (Exception e) {
+                                    // в некоторых версиях метод может отличаться; просто логируем клиенту
+                                    client.player.sendMessage(new LiteralText("§e[Pulse] Не удалось вызвать interactItem: " + e.getMessage()), false);
+                                }
+
+                                // Симулируем нажатие F (swap hands) — вызов метода на игроке
+                                try {
+                                    client.player.swapHandItems();
+                                } catch (Exception e) {
+                                    // если метода нет — игнорируем
+                                }
+
+                                // Симуляция Shift + ПКМ: включаем sneaking, взаимодействуем, выключаем
+                                try {
+                                    client.player.setSneaking(true);
+                                    client.interactionManager.interactItem(client.player, Hand.OFF_HAND);
+                                    client.player.setSneaking(false);
+                                } catch (Exception e) {
+                                    client.player.setSneaking(false);
+                                }
+
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!found) {
+                        client.player.sendMessage(new LiteralText("§c[Pulse] Зелёный шалкер не найден в инвентаре."), false);
                     }
                 }
             }
